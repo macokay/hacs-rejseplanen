@@ -3,7 +3,7 @@
 DOMAIN = "rejseplanen"
 
 # Rejseplanen HAFAS REST API base URL (personal Labs API)
-BASE_URL = "https://xmlopen.rejseplanen.dk/bin/rest.exe"
+BASE_URL = "https://www.rejseplanen.dk/api"
 
 # Config keys
 CONF_API_KEY = "api_key"
