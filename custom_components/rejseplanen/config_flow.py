@@ -14,13 +14,16 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import (
     BASE_URL,
     CONF_API_KEY,
+    CONF_DIRECTION_FILTER,
     CONF_SCAN_INTERVAL,
     CONF_STATION_ID,
     CONF_STATION_NAME,
     CONF_STATIONS,
+    CONF_TYPE_FILTER,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
     MAX_STATIONS,
+    TRANSPORT_TYPES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -70,10 +73,21 @@ async def _validate_api_key(hass: HomeAssistant, api_key: str) -> bool:
     """Validate key by making a cheap location search. Returns True on success."""
     try:
         results = await _search_stations(hass, api_key, "København H")
-        # None result means exception; empty list is still a valid (successful) response
         return results is not None
     except Exception:  # noqa: BLE001
         return False
+
+
+def _station_label(station: dict) -> str:
+    """Human-readable label for a configured station entry."""
+    label = station[CONF_STATION_NAME]
+    direction = station.get(CONF_DIRECTION_FILTER, "")
+    types = station.get(CONF_TYPE_FILTER, [])
+    if direction:
+        label += f" → {direction}"
+    if types:
+        label += f" ({', '.join(types)})"
+    return label
 
 
 # ---------------------------------------------------------------------------
@@ -81,7 +95,7 @@ async def _validate_api_key(hass: HomeAssistant, api_key: str) -> bool:
 # ---------------------------------------------------------------------------
 
 class RejseplanenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle initial setup: API key -> search station -> select -> add more?"""
+    """Handle initial setup: API key -> search station -> select -> filters -> add more?"""
 
     VERSION = 1
 
@@ -90,11 +104,11 @@ class RejseplanenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._scan_interval: int = DEFAULT_SCAN_INTERVAL
         self._stations: list[dict] = []
         self._search_results: list[dict] = []
+        self._pending_station: dict = {}
 
     # -- Step 1: API key + interval ----------------------------------------
 
     async def async_step_user(self, user_input: dict | None = None):
-        # Allow only one instance
         if self._async_current_entries():
             return self.async_abort(reason="already_configured")
 
@@ -151,12 +165,12 @@ class RejseplanenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             selected_id = user_input["station"]
             for result in self._search_results:
                 if str(result.get("id", "")) == selected_id:
-                    if selected_id not in {s[CONF_STATION_ID] for s in self._stations}:
-                        self._stations.append(
-                            {CONF_STATION_ID: selected_id, CONF_STATION_NAME: result["name"]}
-                        )
+                    self._pending_station = {
+                        CONF_STATION_ID: selected_id,
+                        CONF_STATION_NAME: result["name"],
+                    }
                     break
-            return await self.async_step_add_more()
+            return await self.async_step_station_filters()
 
         options = [
             selector.SelectOptionDict(value=str(r["id"]), label=r["name"])
@@ -173,7 +187,49 @@ class RejseplanenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
         )
 
-    # -- Step 4: Add another or finish ------------------------------------
+    # -- Step 4: Optional filters ------------------------------------------
+
+    async def async_step_station_filters(self, user_input: dict | None = None):
+        if user_input is not None:
+            direction = user_input.get(CONF_DIRECTION_FILTER, "").strip()
+            types = user_input.get(CONF_TYPE_FILTER, [])
+            if direction:
+                self._pending_station[CONF_DIRECTION_FILTER] = direction
+            if types:
+                self._pending_station[CONF_TYPE_FILTER] = types
+
+            station_key = (
+                self._pending_station[CONF_STATION_ID],
+                self._pending_station.get(CONF_DIRECTION_FILTER, ""),
+                tuple(sorted(self._pending_station.get(CONF_TYPE_FILTER, []))),
+            )
+            if station_key not in {
+                (s[CONF_STATION_ID], s.get(CONF_DIRECTION_FILTER, ""), tuple(sorted(s.get(CONF_TYPE_FILTER, []))))
+                for s in self._stations
+            }:
+                self._stations.append(self._pending_station)
+            self._pending_station = {}
+            return await self.async_step_add_more()
+
+        type_options = [
+            selector.SelectOptionDict(value=t, label=t) for t in TRANSPORT_TYPES
+        ]
+        return self.async_show_form(
+            step_id="station_filters",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_DIRECTION_FILTER, default=""): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                    ),
+                    vol.Optional(CONF_TYPE_FILTER, default=[]): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=type_options, multiple=True)
+                    ),
+                }
+            ),
+            description_placeholders={"station": self._pending_station.get(CONF_STATION_NAME, "")},
+        )
+
+    # -- Step 5: Add another or finish ------------------------------------
 
     async def async_step_add_more(self, user_input: dict | None = None):
         if user_input is not None:
@@ -189,7 +245,7 @@ class RejseplanenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             )
 
         at_limit = len(self._stations) >= MAX_STATIONS
-        stations_list = ", ".join(s[CONF_STATION_NAME] for s in self._stations)
+        stations_list = ", ".join(_station_label(s) for s in self._stations)
         schema = vol.Schema(
             {vol.Required("add_more", default=False): selector.BooleanSelector()}
         ) if not at_limit else vol.Schema({})
@@ -231,8 +287,7 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
             )
         )
         self._search_results: list[dict] = []
-
-    # -- Main menu ---------------------------------------------------------
+        self._pending_station: dict = {}
 
     async def async_step_init(self, user_input: dict | None = None):
         if user_input is not None:
@@ -243,19 +298,18 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
                 return await self.async_step_remove_station()
             if action == "interval":
                 return await self.async_step_update_interval()
-            # action == "save"
             return self._save_options()
 
-        stations_list = (
-            ", ".join(s[CONF_STATION_NAME] for s in self._stations) or "Ingen"
-        )
         at_limit = len(self._stations) >= MAX_STATIONS
+        stations_list = (
+            ", ".join(_station_label(s) for s in self._stations) or "Ingen"
+        )
 
         action_options = []
         if not at_limit:
-            action_options.append(selector.SelectOptionDict(value="add", label="Tilføj station"))
+            action_options.append(selector.SelectOptionDict(value="add", label="Tilføj sensor"))
         action_options += [
-            selector.SelectOptionDict(value="remove", label="Fjern station"),
+            selector.SelectOptionDict(value="remove", label="Fjern sensor"),
             selector.SelectOptionDict(value="interval", label="Ændr opdateringsinterval"),
             selector.SelectOptionDict(value="save", label="Gem og luk"),
         ]
@@ -276,8 +330,6 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
                 "count": str(len(self._stations)),
             },
         )
-
-    # -- Add station -------------------------------------------------------
 
     async def async_step_add_station(self, user_input: dict | None = None):
         errors: dict = {}
@@ -304,12 +356,12 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
             selected_id = user_input["station"]
             for result in self._search_results:
                 if str(result.get("id", "")) == selected_id:
-                    if selected_id not in {s[CONF_STATION_ID] for s in self._stations}:
-                        self._stations.append(
-                            {CONF_STATION_ID: selected_id, CONF_STATION_NAME: result["name"]}
-                        )
+                    self._pending_station = {
+                        CONF_STATION_ID: selected_id,
+                        CONF_STATION_NAME: result["name"],
+                    }
                     break
-            return await self.async_step_init()
+            return await self.async_step_station_filters()
 
         options = [
             selector.SelectOptionDict(value=str(r["id"]), label=r["name"])
@@ -326,19 +378,47 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
             ),
         )
 
-    # -- Remove stations ---------------------------------------------------
+    async def async_step_station_filters(self, user_input: dict | None = None):
+        if user_input is not None:
+            direction = user_input.get(CONF_DIRECTION_FILTER, "").strip()
+            types = user_input.get(CONF_TYPE_FILTER, [])
+            if direction:
+                self._pending_station[CONF_DIRECTION_FILTER] = direction
+            if types:
+                self._pending_station[CONF_TYPE_FILTER] = types
+            self._stations.append(self._pending_station)
+            self._pending_station = {}
+            return await self.async_step_init()
+
+        type_options = [
+            selector.SelectOptionDict(value=t, label=t) for t in TRANSPORT_TYPES
+        ]
+        return self.async_show_form(
+            step_id="station_filters",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_DIRECTION_FILTER, default=""): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.TEXT)
+                    ),
+                    vol.Optional(CONF_TYPE_FILTER, default=[]): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=type_options, multiple=True)
+                    ),
+                }
+            ),
+            description_placeholders={"station": self._pending_station.get(CONF_STATION_NAME, "")},
+        )
 
     async def async_step_remove_station(self, user_input: dict | None = None):
         if user_input is not None:
             ids_to_remove = set(user_input.get("stations_to_remove", []))
             self._stations = [
-                s for s in self._stations if s[CONF_STATION_ID] not in ids_to_remove
+                s for i, s in enumerate(self._stations) if str(i) not in ids_to_remove
             ]
             return await self.async_step_init()
 
         options = [
-            selector.SelectOptionDict(value=s[CONF_STATION_ID], label=s[CONF_STATION_NAME])
-            for s in self._stations
+            selector.SelectOptionDict(value=str(i), label=_station_label(s))
+            for i, s in enumerate(self._stations)
         ]
         return self.async_show_form(
             step_id="remove_station",
@@ -350,8 +430,6 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
                 }
             ),
         )
-
-    # -- Change interval ---------------------------------------------------
 
     async def async_step_update_interval(self, user_input: dict | None = None):
         if user_input is not None:
@@ -370,8 +448,6 @@ class RejseplanenOptionsFlow(config_entries.OptionsFlow):
                 }
             ),
         )
-
-    # -- Save --------------------------------------------------------------
 
     def _save_options(self):
         return self.async_create_entry(

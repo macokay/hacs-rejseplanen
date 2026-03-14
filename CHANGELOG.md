@@ -4,12 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [1.1.0] - 2026-03-14
+## [1.2.0] - 2026-03-14
+
+### Added
+- Direction filter per sensor — add the same station twice with different directions to get two sensors (e.g. "Stenlille St. → København H" and "Stenlille St. → Slagelse")
+- Transport type filter per sensor — multiselect from IC, Re, S-tog, Lokalbane, Metro, Bus, Togbus, Færge
+- New config flow step `station_filters` appears after selecting a station
+- Sensor name automatically includes direction and type filters (e.g. "Rejseplanen Stenlille St. → København H")
+- Coordinator now fetches a larger batch per station and applies filters locally — no extra API calls for filtered sensors of the same station
 
 ### Fixed
-- `location.name` parsing now correctly uses `stopLocationOrCoordLocation` root key from API 2.0, extracting `StopLocation` from each list item
-- `departureBoard` coordinator logs raw response keys (WARNING level) for debugging API 2.0 response structure
-- Corrected `BASE_URL` from API 1.0 (`xmlopen.rejseplanen.dk`) to API 2.0 (`www.rejseplanen.dk/api`)
+- `location.name` parsing now correctly uses `stopLocationOrCoordLocation` root key (API 2.0)
+- `departureBoard` parsing reads `Departure` at root level (API 2.0)
+- Corrected `BASE_URL` from API 1.0 to API 2.0 (`www.rejseplanen.dk/api`)
 
 ## [1.0.0] - 2026-03-14
 

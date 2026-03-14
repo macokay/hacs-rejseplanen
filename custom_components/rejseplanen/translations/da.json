@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Rejseplanen opsætning",
-        "description": "Indtast din personlige Rejseplanen Labs API-nøgle og ønsket opdateringsinterval. Du kan ansøge om en nøgle på https://labs.rejseplanen.dk",
+        "description": "Indtast din Rejseplanen Labs API-nøgle og ønsket opdateringsinterval.",
         "data": {
           "api_key": "API-nøgle",
           "scan_interval": "Opdateringsinterval (minutter)"
@@ -12,23 +12,25 @@
       "add_station": {
         "title": "Tilføj station",
         "description": "Søg efter en afgangsstation ved navn.",
-        "data": {
-          "station_search": "Stationsnavn"
-        }
+        "data": { "station_search": "Stationsnavn" }
       },
       "select_station": {
         "title": "Vælg station",
         "description": "Vælg stationen fra søgeresultaterne.",
+        "data": { "station": "Station" }
+      },
+      "station_filters": {
+        "title": "Filtre for {station}",
+        "description": "Valgfrit: filtrer denne sensor på retning og/eller transporttype. Lad felterne stå tomme for at vise alle afgange. Tilføj den samme station to gange med forskellige retninger for at få én sensor per retning.",
         "data": {
-          "station": "Station"
+          "direction_filter": "Retning (fx København H)",
+          "type_filter": "Transporttype"
         }
       },
       "add_more": {
-        "title": "Tilføj endnu en station?",
-        "description": "Tilføjede stationer: {stations}",
-        "data": {
-          "add_more": "Tilføj endnu en station"
-        }
+        "title": "Tilføj endnu en sensor?",
+        "description": "Tilføjede sensorer: {stations}",
+        "data": { "add_more": "Tilføj endnu en sensor" }
       }
     },
     "error": {
@@ -37,45 +39,43 @@
       "unknown": "Uventet fejl."
     },
     "abort": {
-      "already_configured": "Rejseplanen er allerede konfigureret. Brug indstillingsflowet til at administrere stationer."
+      "already_configured": "Rejseplanen er allerede konfigureret. Brug indstillingsflowet til at administrere sensorer."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Rejseplanen indstillinger",
-        "description": "Aktive stationer: {stations}\nOpdateringsinterval: {interval} minutter",
-        "data": {
-          "action": "Handling"
-        }
+        "description": "Aktive sensorer: {stations}\nOpdateringsinterval: {interval} minutter",
+        "data": { "action": "Handling" }
       },
       "add_station": {
         "title": "Tilføj station",
         "description": "Søg efter en afgangsstation ved navn.",
-        "data": {
-          "station_search": "Stationsnavn"
-        }
+        "data": { "station_search": "Stationsnavn" }
       },
       "select_station": {
         "title": "Vælg station",
         "description": "Vælg stationen fra søgeresultaterne.",
+        "data": { "station": "Station" }
+      },
+      "station_filters": {
+        "title": "Filtre for {station}",
+        "description": "Valgfrit: filtrer på retning og/eller transporttype. Lad felterne stå tomme for alle afgange.",
         "data": {
-          "station": "Station"
+          "direction_filter": "Retning (fx København H)",
+          "type_filter": "Transporttype"
         }
       },
       "remove_station": {
-        "title": "Fjern stationer",
-        "description": "Vælg en eller flere stationer der skal fjernes.",
-        "data": {
-          "stations_to_remove": "Stationer der fjernes"
-        }
+        "title": "Fjern sensorer",
+        "description": "Vælg en eller flere sensorer der skal fjernes.",
+        "data": { "stations_to_remove": "Sensorer der fjernes" }
       },
       "update_interval": {
         "title": "Opdateringsinterval",
-        "description": "Hvor tit afgangstider hentes. Med den personlige API-grænse på 50.000 kald/måned understøtter 10 minutter op til ca. 11 stationer sikkert.",
-        "data": {
-          "scan_interval": "Opdateringsinterval (minutter)"
-        }
+        "description": "Hvor tit afgangstider hentes.",
+        "data": { "scan_interval": "Opdateringsinterval (minutter)" }
       }
     },
     "error": {

@@ -46,19 +46,23 @@ class RejseplanenCoordinator(DataUpdateCoordinator[dict]):
 
     @property
     def stations(self) -> list[dict]:
-        """Return current station list, preferring options over initial data."""
         return self._entry.options.get(
             CONF_STATIONS,
             self._entry.data.get(CONF_STATIONS, []),
         )
 
     async def _async_update_data(self) -> dict:
-        """Fetch departure boards for all stations. Returns {station_id: [departures]}."""
+        """Fetch departure boards for all stations. Returns {unique_key: [departures]}."""
         session = async_get_clientsession(self.hass)
         data: dict = {}
 
+        # Group by station_id — only one API call per physical station
+        station_ids: dict[str, list[dict]] = {}
         for station in self.stations:
-            station_id = station[CONF_STATION_ID]
+            sid = station[CONF_STATION_ID]
+            station_ids.setdefault(sid, []).append(station)
+
+        for station_id, configs in station_ids.items():
             try:
                 async with asyncio.timeout(10):
                     async with session.get(
@@ -67,28 +71,32 @@ class RejseplanenCoordinator(DataUpdateCoordinator[dict]):
                             "id": station_id,
                             "format": "json",
                             "accessId": self.api_key,
-                            "maxJourneys": MAX_DEPARTURES,
+                            "maxJourneys": MAX_DEPARTURES * 3,  # fetch more to allow filtering
                         },
                     ) as resp:
                         if resp.status != 200:
                             _LOGGER.warning(
                                 "API returned %s for station %s", resp.status, station_id
                             )
-                            data[station_id] = []
+                            for cfg in configs:
+                                data[_station_key(cfg)] = []
                             continue
 
                         payload = await resp.json(content_type=None)
-                        _LOGGER.warning("Rejseplanen departureBoard raw keys for %s: %s", station_id, list(payload.keys()))
-                        data[station_id] = _parse_departures(payload)
+                        all_departures = _parse_departures(payload)
+
+                        # Store filtered result for each sensor config of this station
+                        for cfg in configs:
+                            data[_station_key(cfg)] = _apply_filters(all_departures, cfg)
 
             except asyncio.TimeoutError:
                 _LOGGER.warning("Timeout fetching departures for station %s", station_id)
-                data[station_id] = []
+                for cfg in configs:
+                    data[_station_key(cfg)] = []
             except Exception as err:  # noqa: BLE001
-                _LOGGER.error(
-                    "Error fetching departures for station %s: %s", station_id, err
-                )
-                data[station_id] = []
+                _LOGGER.error("Error fetching departures for station %s: %s", station_id, err)
+                for cfg in configs:
+                    data[_station_key(cfg)] = []
 
         if not data and self.stations:
             raise UpdateFailed("All station fetches failed")
@@ -96,33 +104,74 @@ class RejseplanenCoordinator(DataUpdateCoordinator[dict]):
         return data
 
 
+def _station_key(station: dict) -> str:
+    """Unique key for a sensor config — station_id + optional filters."""
+    from .const import CONF_DIRECTION_FILTER, CONF_TYPE_FILTER, CONF_STATION_ID
+    parts = [station[CONF_STATION_ID]]
+    d = station.get(CONF_DIRECTION_FILTER, "")
+    if d:
+        parts.append(d)
+    t = station.get(CONF_TYPE_FILTER, [])
+    if t:
+        parts.append(",".join(sorted(t)))
+    return "|".join(parts)
+
+
+def _apply_filters(departures: list[dict], cfg: dict) -> list[dict]:
+    """Filter departures by direction and/or transport type."""
+    from .const import CONF_DIRECTION_FILTER, CONF_TYPE_FILTER, MAX_DEPARTURES
+    direction = cfg.get(CONF_DIRECTION_FILTER, "").lower()
+    types = [t.lower() for t in cfg.get(CONF_TYPE_FILTER, [])]
+
+    result = []
+    for dep in departures:
+        if direction and direction not in dep.get("direction", "").lower():
+            continue
+        if types:
+            dep_name = dep.get("line", "").lower()
+            dep_cat = dep.get("category", "").lower()
+            if not any(t in dep_name or t in dep_cat for t in types):
+                continue
+        result.append(dep)
+        if len(result) >= MAX_DEPARTURES:
+            break
+
+    return result
+
+
 def _parse_departures(payload: dict) -> list[dict]:
     """Parse HAFAS DepartureBoard JSON response into a clean list."""
-    # API 2.0: Departure is at root level, not wrapped in DepartureBoard
+    # API 2.0: Departure is at root level
     raw = payload.get("Departure", [])
     if not raw:
-        # Fallback: old-style wrapper
         raw = payload.get("DepartureBoard", {}).get("Departure", [])
     if not raw:
         return []
 
-    # API returns a dict (not list) when there is only one departure
     if isinstance(raw, dict):
         raw = [raw]
 
     departures = []
     for dep in raw:
+        # Extract category from Product or name prefix
+        name = dep.get("name", "")
+        cat = ""
+        products = dep.get("Product", [])
+        if isinstance(products, dict):
+            products = [products]
+        if products:
+            cat = products[0].get("catOut", "")
+
         departures.append(
             {
-                "line": dep.get("name", ""),
+                "line": name,
+                "category": cat,
                 "direction": dep.get("direction", ""),
                 "stop": dep.get("stop", ""),
                 "type": dep.get("type", ""),
                 "platform": dep.get("rtTrack", dep.get("track", dep.get("platform", ""))),
-                # Scheduled
                 "scheduled_time": dep.get("time", ""),
                 "scheduled_date": dep.get("date", ""),
-                # Realtime — falls back to scheduled if missing
                 "realtime_time": dep.get("rtTime", dep.get("time", "")),
                 "realtime_date": dep.get("rtDate", dep.get("date", "")),
                 "cancelled": dep.get("cancelled", False),
