@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased]
+
+### Fixed
+- `location.name` parsing now tries `StopLocation` at root level (API 2.0) with fallback to `LocationList` wrapper
+- `departureBoard` parsing now reads `Departure` at root level (API 2.0) with fallback to `DepartureBoard` wrapper
+- Added detailed debug logging to `_search_stations` to surface raw API responses in HA logs
+
 ## [1.0.0] - 2026-03-14
 
 ### Added
@@ -16,10 +23,3 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Danish and English translations
 - Configurable update interval (5–60 min, default 10 min)
 - Rate limit guidance for 50,000 requests/month personal API
-
-## [Unreleased] - 2026-03-14
-
-### Changed
-- Updated `BASE_URL` in `custom_components/rejseplanen/const.py` from
-	`https://xmlopen.rejseplanen.dk/bin/rest.exe` to
-	`https://www.rejseplanen.dk/api` to use the newer Rejseplanen API endpoint.

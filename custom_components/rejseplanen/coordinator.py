@@ -97,11 +97,14 @@ class RejseplanenCoordinator(DataUpdateCoordinator[dict]):
 
 def _parse_departures(payload: dict) -> list[dict]:
     """Parse HAFAS DepartureBoard JSON response into a clean list."""
-    board = payload.get("DepartureBoard", {})
-    if not board:
+    # API 2.0: Departure is at root level, not wrapped in DepartureBoard
+    raw = payload.get("Departure", [])
+    if not raw:
+        # Fallback: old-style wrapper
+        raw = payload.get("DepartureBoard", {}).get("Departure", [])
+    if not raw:
         return []
 
-    raw = board.get("Departure", [])
     # API returns a dict (not list) when there is only one departure
     if isinstance(raw, dict):
         raw = [raw]
@@ -114,7 +117,7 @@ def _parse_departures(payload: dict) -> list[dict]:
                 "direction": dep.get("direction", ""),
                 "stop": dep.get("stop", ""),
                 "type": dep.get("type", ""),
-                "platform": dep.get("track", dep.get("platform", "")),
+                "platform": dep.get("rtTrack", dep.get("track", dep.get("platform", ""))),
                 # Scheduled
                 "scheduled_time": dep.get("time", ""),
                 "scheduled_date": dep.get("date", ""),
