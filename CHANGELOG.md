@@ -4,14 +4,23 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [1.3.0] - 2026-03-14
+
+### Added
+- Live direction suggestions in config flow — after selecting transport type, available directions are fetched from the actual departure board and presented as a dropdown
+- "Alle retninger" option always available as first choice in direction step
+- Config flow is now split into clear steps: Station search → Select station → Transport type → Direction → Add more
+
+### Changed
+- `station_filters` step replaced by separate `select_type` and `select_direction` steps for better UX
+- Direction filter is now a dropdown (from live data) instead of a free-text field
+
 ## [1.2.0] - 2026-03-14
 
 ### Added
-- Direction filter per sensor — add the same station twice with different directions to get two sensors (e.g. "Stenlille St. → København H" and "Stenlille St. → Slagelse")
-- Transport type filter per sensor — multiselect from IC, Re, S-tog, Lokalbane, Metro, Bus, Togbus, Færge
-- New config flow step `station_filters` appears after selecting a station
-- Sensor name automatically includes direction and type filters (e.g. "Rejseplanen Stenlille St. → København H")
-- Coordinator now fetches a larger batch per station and applies filters locally — no extra API calls for filtered sensors of the same station
+- Direction filter per sensor — add the same station twice with different directions for two sensors
+- Transport type filter per sensor (IC, Re, S-tog, Lokalbane, Metro, Bus, Togbus, Færge)
+- Coordinator fetches a larger batch per station and applies filters locally — no extra API calls
 
 ### Fixed
 - `location.name` parsing now correctly uses `stopLocationOrCoordLocation` root key (API 2.0)

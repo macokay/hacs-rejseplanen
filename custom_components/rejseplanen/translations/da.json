@@ -4,10 +4,7 @@
       "user": {
         "title": "Rejseplanen opsætning",
         "description": "Indtast din Rejseplanen Labs API-nøgle og ønsket opdateringsinterval.",
-        "data": {
-          "api_key": "API-nøgle",
-          "scan_interval": "Opdateringsinterval (minutter)"
-        }
+        "data": { "api_key": "API-nøgle", "scan_interval": "Opdateringsinterval (minutter)" }
       },
       "add_station": {
         "title": "Tilføj station",
@@ -16,16 +13,17 @@
       },
       "select_station": {
         "title": "Vælg station",
-        "description": "Vælg stationen fra søgeresultaterne.",
         "data": { "station": "Station" }
       },
-      "station_filters": {
-        "title": "Filtre for {station}",
-        "description": "Valgfrit: filtrer denne sensor på retning og/eller transporttype. Lad felterne stå tomme for at vise alle afgange. Tilføj den samme station to gange med forskellige retninger for at få én sensor per retning.",
-        "data": {
-          "direction_filter": "Retning (fx København H)",
-          "type_filter": "Transporttype"
-        }
+      "select_type": {
+        "title": "Transporttype for {station}",
+        "description": "Filtrer på transporttype. Lad feltet stå tomt for at inkludere alle typer.",
+        "data": { "type_filter": "Transporttype" }
+      },
+      "select_direction": {
+        "title": "Retning for {station}",
+        "description": "Vælg en bestemt retning eller vis alle afgange.",
+        "data": { "direction_filter": "Retning" }
       },
       "add_more": {
         "title": "Tilføj endnu en sensor?",
@@ -39,7 +37,7 @@
       "unknown": "Uventet fejl."
     },
     "abort": {
-      "already_configured": "Rejseplanen er allerede konfigureret. Brug indstillingsflowet til at administrere sensorer."
+      "already_configured": "Rejseplanen er allerede konfigureret. Brug Konfigurer til at administrere sensorer."
     }
   },
   "options": {
@@ -51,30 +49,28 @@
       },
       "add_station": {
         "title": "Tilføj station",
-        "description": "Søg efter en afgangsstation ved navn.",
         "data": { "station_search": "Stationsnavn" }
       },
       "select_station": {
         "title": "Vælg station",
-        "description": "Vælg stationen fra søgeresultaterne.",
         "data": { "station": "Station" }
       },
-      "station_filters": {
-        "title": "Filtre for {station}",
-        "description": "Valgfrit: filtrer på retning og/eller transporttype. Lad felterne stå tomme for alle afgange.",
-        "data": {
-          "direction_filter": "Retning (fx København H)",
-          "type_filter": "Transporttype"
-        }
+      "select_type": {
+        "title": "Transporttype for {station}",
+        "description": "Filtrer på transporttype. Lad feltet stå tomt for at inkludere alle typer.",
+        "data": { "type_filter": "Transporttype" }
+      },
+      "select_direction": {
+        "title": "Retning for {station}",
+        "description": "Vælg en bestemt retning eller vis alle afgange.",
+        "data": { "direction_filter": "Retning" }
       },
       "remove_station": {
         "title": "Fjern sensorer",
-        "description": "Vælg en eller flere sensorer der skal fjernes.",
         "data": { "stations_to_remove": "Sensorer der fjernes" }
       },
       "update_interval": {
         "title": "Opdateringsinterval",
-        "description": "Hvor tit afgangstider hentes.",
         "data": { "scan_interval": "Opdateringsinterval (minutter)" }
       }
     },

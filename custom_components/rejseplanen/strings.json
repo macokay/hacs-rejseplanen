@@ -4,10 +4,7 @@
       "user": {
         "title": "Rejseplanen Setup",
         "description": "Enter your Rejseplanen Labs API key and preferred update interval.",
-        "data": {
-          "api_key": "API Key",
-          "scan_interval": "Update interval (minutes)"
-        }
+        "data": { "api_key": "API Key", "scan_interval": "Update interval (minutes)" }
       },
       "add_station": {
         "title": "Add Station",
@@ -16,20 +13,21 @@
       },
       "select_station": {
         "title": "Select Station",
-        "description": "Select the station from the search results.",
         "data": { "station": "Station" }
       },
-      "station_filters": {
-        "title": "Filters for {station}",
-        "description": "Optional: filter this sensor by direction and/or transport type. Leave blank to show all departures. Add the same station twice with different filters to get one sensor per direction.",
-        "data": {
-          "direction_filter": "Direction (e.g. København H)",
-          "type_filter": "Transport type"
-        }
+      "select_type": {
+        "title": "Transport Type for {station}",
+        "description": "Filter by transport type. Leave blank to include all types.",
+        "data": { "type_filter": "Transport type" }
+      },
+      "select_direction": {
+        "title": "Direction for {station}",
+        "description": "Choose a specific direction or show all departures.",
+        "data": { "direction_filter": "Direction" }
       },
       "add_more": {
         "title": "Add Another Sensor?",
-        "description": "Currently added: {stations}",
+        "description": "Added so far: {stations}",
         "data": { "add_more": "Add another sensor" }
       }
     },
@@ -39,7 +37,7 @@
       "unknown": "Unexpected error."
     },
     "abort": {
-      "already_configured": "Rejseplanen is already configured. Use the options flow to manage sensors."
+      "already_configured": "Rejseplanen is already configured. Use Configure to manage sensors."
     }
   },
   "options": {
@@ -51,30 +49,28 @@
       },
       "add_station": {
         "title": "Add Station",
-        "description": "Search for a departure station by name.",
         "data": { "station_search": "Station name" }
       },
       "select_station": {
         "title": "Select Station",
-        "description": "Select the station from the search results.",
         "data": { "station": "Station" }
       },
-      "station_filters": {
-        "title": "Filters for {station}",
-        "description": "Optional: filter by direction and/or transport type. Leave blank for all departures.",
-        "data": {
-          "direction_filter": "Direction (e.g. København H)",
-          "type_filter": "Transport type"
-        }
+      "select_type": {
+        "title": "Transport Type for {station}",
+        "description": "Filter by transport type. Leave blank to include all types.",
+        "data": { "type_filter": "Transport type" }
+      },
+      "select_direction": {
+        "title": "Direction for {station}",
+        "description": "Choose a specific direction or show all departures.",
+        "data": { "direction_filter": "Direction" }
       },
       "remove_station": {
         "title": "Remove Sensors",
-        "description": "Select one or more sensors to remove.",
         "data": { "stations_to_remove": "Sensors to remove" }
       },
       "update_interval": {
         "title": "Update Interval",
-        "description": "How often to fetch new departure boards.",
         "data": { "scan_interval": "Update interval (minutes)" }
       }
     },
