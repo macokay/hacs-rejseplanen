@@ -1,0 +1,369 @@
+"""Config flow for Rejseplanen."""
+from __future__ import annotations
+
+import asyncio
+import logging
+
+import voluptuous as vol
+
+from homeassistant import config_entries
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import selector
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+
+from .const import (
+    BASE_URL,
+    CONF_API_KEY,
+    CONF_SCAN_INTERVAL,
+    CONF_STATION_ID,
+    CONF_STATION_NAME,
+    CONF_STATIONS,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+    MAX_STATIONS,
+)
+
+_LOGGER = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Shared API helpers
+# ---------------------------------------------------------------------------
+
+async def _search_stations(hass: HomeAssistant, api_key: str, query: str) -> list[dict]:
+    """Search for stop locations by name. Returns up to 10 results."""
+    session = async_get_clientsession(hass)
+    try:
+        async with asyncio.timeout(10):
+            async with session.get(
+                f"{BASE_URL}/location.name",
+                params={"input": query, "format": "json", "accessId": api_key},
+            ) as resp:
+                if resp.status != 200:
+                    return []
+                data = await resp.json(content_type=None)
+                locations = data.get("LocationList", {})
+                stops = locations.get("StopLocation", [])
+                # API returns a dict when there is only one result
+                if isinstance(stops, dict):
+                    stops = [stops]
+                return stops[:10]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+async def _validate_api_key(hass: HomeAssistant, api_key: str) -> bool:
+    """Validate key by making a cheap location search. Returns True on success."""
+    try:
+        results = await _search_stations(hass, api_key, "København H")
+        # None result means exception; empty list is still a valid (successful) response
+        return results is not None
+    except Exception:  # noqa: BLE001
+        return False
+
+
+# ---------------------------------------------------------------------------
+# Config flow
+# ---------------------------------------------------------------------------
+
+class RejseplanenConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle initial setup: API key -> search station -> select -> add more?"""
+
+    VERSION = 1
+
+    def __init__(self) -> None:
+        self._api_key: str = ""
+        self._scan_interval: int = DEFAULT_SCAN_INTERVAL
+        self._stations: list[dict] = []
+        self._search_results: list[dict] = []
+
+    # -- Step 1: API key + interval ----------------------------------------
+
+    async def async_step_user(self, user_input: dict | None = None):
+        # Allow only one instance
+        if self._async_current_entries():
+            return self.async_abort(reason="already_configured")
+
+        errors: dict = {}
+
+        if user_input is not None:
+            api_key = user_input[CONF_API_KEY].strip()
+            if await _validate_api_key(self.hass, api_key):
+                self._api_key = api_key
+                self._scan_interval = int(user_input.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL))
+                return await self.async_step_add_station()
+            errors["base"] = "cannot_connect"
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_API_KEY): selector.TextSelector(
+                        selector.TextSelectorConfig(type=selector.TextSelectorType.PASSWORD)
+                    ),
+                    vol.Optional(CONF_SCAN_INTERVAL, default=DEFAULT_SCAN_INTERVAL): selector.NumberSelector(
+                        selector.NumberSelectorConfig(min=5, max=60, step=5, mode=selector.NumberSelectorMode.SLIDER)
+                    ),
+                }
+            ),
+            errors=errors,
+        )
+
+    # -- Step 2: Search station --------------------------------------------
+
+    async def async_step_add_station(self, user_input: dict | None = None):
+        errors: dict = {}
+
+        if user_input is not None:
+            query = user_input["station_search"].strip()
+            results = await _search_stations(self.hass, self._api_key, query)
+            if results:
+                self._search_results = results
+                return await self.async_step_select_station()
+            errors["base"] = "no_stations_found"
+
+        return self.async_show_form(
+            step_id="add_station",
+            data_schema=vol.Schema(
+                {vol.Required("station_search"): selector.TextSelector()}
+            ),
+            errors=errors,
+        )
+
+    # -- Step 3: Select from results ---------------------------------------
+
+    async def async_step_select_station(self, user_input: dict | None = None):
+        if user_input is not None:
+            selected_id = user_input["station"]
+            for result in self._search_results:
+                if str(result.get("id", "")) == selected_id:
+                    if selected_id not in {s[CONF_STATION_ID] for s in self._stations}:
+                        self._stations.append(
+                            {CONF_STATION_ID: selected_id, CONF_STATION_NAME: result["name"]}
+                        )
+                    break
+            return await self.async_step_add_more()
+
+        options = [
+            selector.SelectOptionDict(value=str(r["id"]), label=r["name"])
+            for r in self._search_results
+        ]
+        return self.async_show_form(
+            step_id="select_station",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("station"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options)
+                    )
+                }
+            ),
+        )
+
+    # -- Step 4: Add another or finish ------------------------------------
+
+    async def async_step_add_more(self, user_input: dict | None = None):
+        if user_input is not None:
+            if user_input.get("add_more") and len(self._stations) < MAX_STATIONS:
+                return await self.async_step_add_station()
+            return self.async_create_entry(
+                title="Rejseplanen",
+                data={
+                    CONF_API_KEY: self._api_key,
+                    CONF_SCAN_INTERVAL: self._scan_interval,
+                    CONF_STATIONS: self._stations,
+                },
+            )
+
+        at_limit = len(self._stations) >= MAX_STATIONS
+        stations_list = ", ".join(s[CONF_STATION_NAME] for s in self._stations)
+        schema = vol.Schema(
+            {vol.Required("add_more", default=False): selector.BooleanSelector()}
+        ) if not at_limit else vol.Schema({})
+
+        return self.async_show_form(
+            step_id="add_more",
+            data_schema=schema,
+            description_placeholders={
+                "stations": stations_list,
+                "max": str(MAX_STATIONS),
+                "count": str(len(self._stations)),
+            },
+        )
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry):
+        return RejseplanenOptionsFlow(config_entry)
+
+
+# ---------------------------------------------------------------------------
+# Options flow
+# ---------------------------------------------------------------------------
+
+class RejseplanenOptionsFlow(config_entries.OptionsFlow):
+    """Manage stations and scan interval after initial setup."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        self._config_entry = config_entry
+        self._stations: list[dict] = list(
+            config_entry.options.get(
+                CONF_STATIONS, config_entry.data.get(CONF_STATIONS, [])
+            )
+        )
+        self._scan_interval: int = int(
+            config_entry.options.get(
+                CONF_SCAN_INTERVAL,
+                config_entry.data.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+            )
+        )
+        self._search_results: list[dict] = []
+
+    # -- Main menu ---------------------------------------------------------
+
+    async def async_step_init(self, user_input: dict | None = None):
+        if user_input is not None:
+            action = user_input.get("action")
+            if action == "add":
+                return await self.async_step_add_station()
+            if action == "remove":
+                return await self.async_step_remove_station()
+            if action == "interval":
+                return await self.async_step_update_interval()
+            # action == "save"
+            return self._save_options()
+
+        stations_list = (
+            ", ".join(s[CONF_STATION_NAME] for s in self._stations) or "Ingen"
+        )
+        at_limit = len(self._stations) >= MAX_STATIONS
+
+        action_options = []
+        if not at_limit:
+            action_options.append(selector.SelectOptionDict(value="add", label="Tilføj station"))
+        action_options += [
+            selector.SelectOptionDict(value="remove", label="Fjern station"),
+            selector.SelectOptionDict(value="interval", label="Ændr opdateringsinterval"),
+            selector.SelectOptionDict(value="save", label="Gem og luk"),
+        ]
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("action"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=action_options)
+                    )
+                }
+            ),
+            description_placeholders={
+                "stations": stations_list,
+                "interval": str(self._scan_interval),
+                "max": str(MAX_STATIONS),
+                "count": str(len(self._stations)),
+            },
+        )
+
+    # -- Add station -------------------------------------------------------
+
+    async def async_step_add_station(self, user_input: dict | None = None):
+        errors: dict = {}
+        api_key = self._config_entry.data[CONF_API_KEY]
+
+        if user_input is not None:
+            query = user_input["station_search"].strip()
+            results = await _search_stations(self.hass, api_key, query)
+            if results:
+                self._search_results = results
+                return await self.async_step_select_station()
+            errors["base"] = "no_stations_found"
+
+        return self.async_show_form(
+            step_id="add_station",
+            data_schema=vol.Schema(
+                {vol.Required("station_search"): selector.TextSelector()}
+            ),
+            errors=errors,
+        )
+
+    async def async_step_select_station(self, user_input: dict | None = None):
+        if user_input is not None:
+            selected_id = user_input["station"]
+            for result in self._search_results:
+                if str(result.get("id", "")) == selected_id:
+                    if selected_id not in {s[CONF_STATION_ID] for s in self._stations}:
+                        self._stations.append(
+                            {CONF_STATION_ID: selected_id, CONF_STATION_NAME: result["name"]}
+                        )
+                    break
+            return await self.async_step_init()
+
+        options = [
+            selector.SelectOptionDict(value=str(r["id"]), label=r["name"])
+            for r in self._search_results
+        ]
+        return self.async_show_form(
+            step_id="select_station",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("station"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options)
+                    )
+                }
+            ),
+        )
+
+    # -- Remove stations ---------------------------------------------------
+
+    async def async_step_remove_station(self, user_input: dict | None = None):
+        if user_input is not None:
+            ids_to_remove = set(user_input.get("stations_to_remove", []))
+            self._stations = [
+                s for s in self._stations if s[CONF_STATION_ID] not in ids_to_remove
+            ]
+            return await self.async_step_init()
+
+        options = [
+            selector.SelectOptionDict(value=s[CONF_STATION_ID], label=s[CONF_STATION_NAME])
+            for s in self._stations
+        ]
+        return self.async_show_form(
+            step_id="remove_station",
+            data_schema=vol.Schema(
+                {
+                    vol.Required("stations_to_remove"): selector.SelectSelector(
+                        selector.SelectSelectorConfig(options=options, multiple=True)
+                    )
+                }
+            ),
+        )
+
+    # -- Change interval ---------------------------------------------------
+
+    async def async_step_update_interval(self, user_input: dict | None = None):
+        if user_input is not None:
+            self._scan_interval = int(user_input[CONF_SCAN_INTERVAL])
+            return await self.async_step_init()
+
+        return self.async_show_form(
+            step_id="update_interval",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_SCAN_INTERVAL, default=self._scan_interval): selector.NumberSelector(
+                        selector.NumberSelectorConfig(
+                            min=5, max=60, step=5, mode=selector.NumberSelectorMode.SLIDER
+                        )
+                    )
+                }
+            ),
+        )
+
+    # -- Save --------------------------------------------------------------
+
+    def _save_options(self):
+        return self.async_create_entry(
+            title="",
+            data={
+                CONF_STATIONS: self._stations,
+                CONF_SCAN_INTERVAL: self._scan_interval,
+            },
+        )

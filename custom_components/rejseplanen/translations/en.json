@@ -1,0 +1,85 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Rejseplanen Setup",
+        "description": "Enter your Rejseplanen Labs API key and preferred update interval. You can apply for a personal API key at https://labs.rejseplanen.dk",
+        "data": {
+          "api_key": "API Key",
+          "scan_interval": "Update interval (minutes)"
+        }
+      },
+      "add_station": {
+        "title": "Add Station",
+        "description": "Search for a departure station by name.",
+        "data": {
+          "station_search": "Station name"
+        }
+      },
+      "select_station": {
+        "title": "Select Station",
+        "description": "Select the station from the search results.",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "add_more": {
+        "title": "Add Another Station?",
+        "description": "Currently added: {stations}",
+        "data": {
+          "add_more": "Add another station"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect. Check your API key and internet connection.",
+      "no_stations_found": "No stations found. Try a different name or spelling.",
+      "unknown": "Unexpected error."
+    },
+    "abort": {
+      "already_configured": "Rejseplanen is already configured. Use the options flow to manage stations."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rejseplanen Options",
+        "description": "Active stations: {stations}\nUpdate interval: {interval} minutes",
+        "data": {
+          "action": "Action"
+        }
+      },
+      "add_station": {
+        "title": "Add Station",
+        "description": "Search for a departure station by name.",
+        "data": {
+          "station_search": "Station name"
+        }
+      },
+      "select_station": {
+        "title": "Select Station",
+        "description": "Select the station from the search results.",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "remove_station": {
+        "title": "Remove Stations",
+        "description": "Select one or more stations to remove.",
+        "data": {
+          "stations_to_remove": "Stations to remove"
+        }
+      },
+      "update_interval": {
+        "title": "Update Interval",
+        "description": "How often to fetch new departure boards. Note: with the personal API limit of 50,000 requests/month, 10 minutes supports up to ~11 stations safely.",
+        "data": {
+          "scan_interval": "Update interval (minutes)"
+        }
+      }
+    },
+    "error": {
+      "no_stations_found": "No stations found. Try a different name or spelling."
+    }
+  }
+}

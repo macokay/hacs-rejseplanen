@@ -1,0 +1,12 @@
+{
+  "domain": "rejseplanen",
+  "name": "Rejseplanen",
+  "version": "1.0.0",
+  "documentation": "https://github.com/macokay/hacs-rejseplanen",
+  "issue_tracker": "https://github.com/macokay/hacs-rejseplanen/issues",
+  "requirements": [],
+  "dependencies": [],
+  "codeowners": ["@macokay"],
+  "iot_class": "cloud_polling",
+  "config_flow": true
+}

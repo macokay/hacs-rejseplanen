@@ -1,0 +1,4 @@
+refresh:
+  name: Opdater afgangstider
+  description: Henter nye afgangstider fra Rejseplanen med det samme, uanset det normale opdateringsinterval.
+  fields: {}

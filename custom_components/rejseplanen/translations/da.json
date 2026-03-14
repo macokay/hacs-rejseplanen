@@ -1,0 +1,85 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Rejseplanen opsætning",
+        "description": "Indtast din personlige Rejseplanen Labs API-nøgle og ønsket opdateringsinterval. Du kan ansøge om en nøgle på https://labs.rejseplanen.dk",
+        "data": {
+          "api_key": "API-nøgle",
+          "scan_interval": "Opdateringsinterval (minutter)"
+        }
+      },
+      "add_station": {
+        "title": "Tilføj station",
+        "description": "Søg efter en afgangsstation ved navn.",
+        "data": {
+          "station_search": "Stationsnavn"
+        }
+      },
+      "select_station": {
+        "title": "Vælg station",
+        "description": "Vælg stationen fra søgeresultaterne.",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "add_more": {
+        "title": "Tilføj endnu en station?",
+        "description": "Tilføjede stationer: {stations}",
+        "data": {
+          "add_more": "Tilføj endnu en station"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kunne ikke oprette forbindelse. Tjek din API-nøgle og internetforbindelsen.",
+      "no_stations_found": "Ingen stationer fundet. Prøv et andet navn eller stavning.",
+      "unknown": "Uventet fejl."
+    },
+    "abort": {
+      "already_configured": "Rejseplanen er allerede konfigureret. Brug indstillingsflowet til at administrere stationer."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Rejseplanen indstillinger",
+        "description": "Aktive stationer: {stations}\nOpdateringsinterval: {interval} minutter",
+        "data": {
+          "action": "Handling"
+        }
+      },
+      "add_station": {
+        "title": "Tilføj station",
+        "description": "Søg efter en afgangsstation ved navn.",
+        "data": {
+          "station_search": "Stationsnavn"
+        }
+      },
+      "select_station": {
+        "title": "Vælg station",
+        "description": "Vælg stationen fra søgeresultaterne.",
+        "data": {
+          "station": "Station"
+        }
+      },
+      "remove_station": {
+        "title": "Fjern stationer",
+        "description": "Vælg en eller flere stationer der skal fjernes.",
+        "data": {
+          "stations_to_remove": "Stationer der fjernes"
+        }
+      },
+      "update_interval": {
+        "title": "Opdateringsinterval",
+        "description": "Hvor tit afgangstider hentes. Med den personlige API-grænse på 50.000 kald/måned understøtter 10 minutter op til ca. 11 stationer sikkert.",
+        "data": {
+          "scan_interval": "Opdateringsinterval (minutter)"
+        }
+      }
+    },
+    "error": {
+      "no_stations_found": "Ingen stationer fundet. Prøv et andet navn eller stavning."
+    }
+  }
+}
