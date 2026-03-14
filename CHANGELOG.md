@@ -16,3 +16,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 - Danish and English translations
 - Configurable update interval (5–60 min, default 10 min)
 - Rate limit guidance for 50,000 requests/month personal API
+
+## [Unreleased] - 2026-03-14
+
+### Changed
+- Updated `BASE_URL` in `custom_components/rejseplanen/const.py` from
+	`https://xmlopen.rejseplanen.dk/bin/rest.exe` to
+	`https://www.rejseplanen.dk/api` to use the newer Rejseplanen API endpoint.
