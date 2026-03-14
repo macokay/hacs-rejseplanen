@@ -39,7 +39,7 @@ async def _search_stations(hass: HomeAssistant, api_key: str, query: str) -> lis
                 f"{BASE_URL}/location.name",
                 params={"input": query, "format": "json", "accessId": api_key},
             ) as resp:
-                _LOGGER.debug(
+                _LOGGER.warning(
                     "Rejseplanen location.name status=%s url=%s",
                     resp.status,
                     str(resp.url),
@@ -48,20 +48,18 @@ async def _search_stations(hass: HomeAssistant, api_key: str, query: str) -> lis
                     _LOGGER.warning("Rejseplanen location.name returned HTTP %s", resp.status)
                     return []
                 raw_text = await resp.text()
-                _LOGGER.debug("Rejseplanen location.name raw response: %s", raw_text[:2000])
+                _LOGGER.warning("Rejseplanen location.name raw response: %.1000s", raw_text)
                 import json as _json
                 data = _json.loads(raw_text)
-                # API 2.0: StopLocation may be at root OR wrapped in LocationList
                 stops = data.get("StopLocation", [])
                 if not stops:
                     stops = data.get("LocationList", {}).get("StopLocation", [])
-                _LOGGER.debug("Rejseplanen stops found: %s", stops)
-                # API returns a dict (not list) when there is only one result
+                _LOGGER.warning("Rejseplanen stops parsed: %s", stops)
                 if isinstance(stops, dict):
                     stops = [stops]
                 return stops[:10]
     except Exception as err:  # noqa: BLE001
-        _LOGGER.error("Rejseplanen _search_stations exception: %s", err)
+        _LOGGER.warning("Rejseplanen _search_stations exception: %s", err)
         return []
 
 

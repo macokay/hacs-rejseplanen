@@ -141,10 +141,3 @@ columns:
 Free to use and modify for personal, non-commercial use.
 Credit appreciated if you share or build upon this work.
 Commercial use is not permitted.
-
-## Notes
-
-- Changed API endpoint: the integration now uses the newer Rejseplanen API at
-  `https://www.rejseplanen.dk/api` (see `custom_components/rejseplanen/const.py`).
-  If you previously relied on the older XML endpoint, please update any
-  external tooling accordingly.
