@@ -78,6 +78,7 @@ class RejseplanenCoordinator(DataUpdateCoordinator[dict]):
                             continue
 
                         payload = await resp.json(content_type=None)
+                        _LOGGER.warning("Rejseplanen departureBoard raw keys for %s: %s", station_id, list(payload.keys()))
                         data[station_id] = _parse_departures(payload)
 
             except asyncio.TimeoutError:

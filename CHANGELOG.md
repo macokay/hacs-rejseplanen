@@ -4,12 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
-## [Unreleased] - 2026-03-14
+## [1.1.0] - 2026-03-14
 
 ### Fixed
-- Changed `_search_stations` log level from DEBUG to WARNING so API responses appear in HA's standard log viewer
-- `location.name` parsing tries `StopLocation` at root level (API 2.0) with fallback to `LocationList` wrapper
-- `departureBoard` parsing reads `Departure` at root level (API 2.0) with fallback to `DepartureBoard` wrapper
+- `location.name` parsing now correctly uses `stopLocationOrCoordLocation` root key from API 2.0, extracting `StopLocation` from each list item
+- `departureBoard` coordinator logs raw response keys (WARNING level) for debugging API 2.0 response structure
 - Corrected `BASE_URL` from API 1.0 (`xmlopen.rejseplanen.dk`) to API 2.0 (`www.rejseplanen.dk/api`)
 
 ## [1.0.0] - 2026-03-14
