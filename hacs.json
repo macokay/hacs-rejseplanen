@@ -1,4 +1,5 @@
 {
   "name": "Rejseplanen",
-  "render_readme": true
+  "render_readme": true,
+  "icon": "https://raw.githubusercontent.com/macokay/hacs-rejseplanen/main/icon.png"
 }
