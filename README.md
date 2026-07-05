@@ -137,7 +137,4 @@ columns:
 
 ## License
 
-© 2026 Mac O Kay
-Free to use and modify for personal, non-commercial use.
-Credit appreciated if you share or build upon this work.
-Commercial use is not permitted.
+© 2026 Mac O Kay. Licensed under the MIT License. See [LICENSE](LICENSE) for details.
